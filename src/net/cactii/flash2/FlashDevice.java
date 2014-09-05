@@ -31,6 +31,7 @@ import android.util.Log;
 
 import net.cactii.flash2.R;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
@@ -126,37 +127,7 @@ public class FlashDevice {
                     break;
             }
             if (mUseCameraInterface) {
-                if (mCamera == null) {
-                    mCamera = initializeCamera();
-                }
-                if (value == OFF) {
-                    Camera.Parameters params = mCamera.getParameters();
-                    params.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
-                    mCamera.setParameters(params);
-                    mCamera.stopPreview();
-                    mCamera.release();
-                    mCamera = null;
-                    if (mSurfaceTexture != null) {
-                        mSurfaceTexture.release();
-                        mSurfaceTexture = null;
-                    }
-                    if (mWakeLock.isHeld()) {
-                        mWakeLock.release();
-                    }
-                } else {
-                    if (mSurfaceTexture == null) {
-                        // Create a dummy texture, otherwise setPreview won't work on some devices
-                        mSurfaceTexture = new SurfaceTexture(0);
-                        mCamera.setPreviewTexture(mSurfaceTexture);
-                        mCamera.startPreview();
-                    }
-                    Camera.Parameters params = mCamera.getParameters();
-                    params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
-                    mCamera.setParameters(params);
-                    if (!mWakeLock.isHeld()) {
-                        mWakeLock.acquire();
-                    }
-                }
+                startCameraInterfaceTorch(value);
             } else {
                 // Devices with sysfs toggle and sysfs luminosity
                 if (mFlashDeviceLuminosity != null && mFlashDeviceLuminosity.length() > 0) {
@@ -243,6 +214,11 @@ public class FlashDevice {
                     }
                 } else {
 
+                    if (!new File(mFlashDevice).exists()) {
+                        startCameraInterfaceTorch(value);
+                        return;
+                    }
+
                     if (mode != OFF) {
                         onStartTorch(-1);
                     }
@@ -277,6 +253,40 @@ public class FlashDevice {
         } finally {
             if (mode == OFF) {
                 onStopTorch();
+            }
+        }
+    }
+
+    private void startCameraInterfaceTorch(final int value) throws IOException {
+        if (mCamera == null) {
+            mCamera = initializeCamera();
+        }
+        if (value == OFF) {
+            Camera.Parameters params = mCamera.getParameters();
+            params.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
+            mCamera.setParameters(params);
+            mCamera.stopPreview();
+            mCamera.release();
+            mCamera = null;
+            if (mSurfaceTexture != null) {
+                mSurfaceTexture.release();
+                mSurfaceTexture = null;
+            }
+            if (mWakeLock.isHeld()) {
+                mWakeLock.release();
+            }
+        } else {
+            if (mSurfaceTexture == null) {
+                // Create a dummy texture, otherwise setPreview won't work on some devices
+                mSurfaceTexture = new SurfaceTexture(0);
+                mCamera.setPreviewTexture(mSurfaceTexture);
+                mCamera.startPreview();
+            }
+            Camera.Parameters params = mCamera.getParameters();
+            params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
+            mCamera.setParameters(params);
+            if (!mWakeLock.isHeld()) {
+                mWakeLock.acquire();
             }
         }
     }
